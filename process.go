@@ -46,3 +46,13 @@ func FetchProcess() ([]Process, error) {
 	}
 	return processes, nil
 }
+
+func FilterProcesses(processes []Process, minCPU float64, minMem float64) []Process {
+	var result []Process
+	for _, p := range processes {
+		if p.CPU <= minCPU && p.Memory <= minMem {
+			result = append(result, p)
+		}
+	}
+	return result
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 )
 
@@ -31,10 +32,22 @@ func PrintAll(processes []Process) {
 // TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
 // the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 func main() {
+	filterCPU := flag.Float64("filter-cpu", 0.0, "Show processes above this CPU%")
+	filterMem := flag.Float64("filter-mem", 0.0, "Show processes above this MEM%")
+	killTarget := flag.String("kill", "", "kill process by name or PID")
+	interval := flag.Int("interval", 0, "auto-refresh every N seconds (0 = run once")
+
+	flag.Parse()
+
+	_ = killTarget // not wired up yet
+	_ = interval   // not wired up yet
+
 	processes, err := FetchProcess()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
-	PrintAll(processes)
+
+	filtered := FilterProcesses(processes, *filterCPU, *filterMem)
+	PrintAll(filtered)
 }
