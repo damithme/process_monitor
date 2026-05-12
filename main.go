@@ -39,10 +39,19 @@ func main() {
 
 	flag.Parse()
 
-	_ = killTarget // not wired up yet
-	_ = interval   // not wired up yet
-
 	processes, err := FetchProcess()
+
+	if *killTarget != "" {
+		err := KillTarget(*killTarget, processes)
+		if err != nil {
+			fmt.Println("Kill failed:", err)
+		} else {
+			fmt.Println("Killed", *killTarget)
+		}
+		return
+	}
+	_ = interval // not wired up yet
+
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
