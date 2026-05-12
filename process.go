@@ -30,9 +30,18 @@ func FetchProcess() ([]Process, error) {
 		if len(fields) < 11 {
 			continue
 		}
-		pid, _ := strconv.Atoi(fields[1])
-		cpu, _ := strconv.ParseFloat(fields[2], 64)
-		mem, _ := strconv.ParseFloat(fields[3], 64)
+		pid, err := strconv.Atoi(fields[1])
+		if err != nil {
+			continue
+		}
+		cpu, err := strconv.ParseFloat(fields[2], 64)
+		if err != nil {
+			continue
+		}
+		mem, err := strconv.ParseFloat(fields[3], 64)
+		if err != nil {
+			continue
+		}
 		name := fields[10]
 
 		p := Process{
@@ -50,7 +59,7 @@ func FetchProcess() ([]Process, error) {
 func FilterProcesses(processes []Process, minCPU float64, minMem float64) []Process {
 	var result []Process
 	for _, p := range processes {
-		if p.CPU <= minCPU && p.Memory <= minMem {
+		if p.CPU >= minCPU && p.Memory >= minMem {
 			result = append(result, p)
 		}
 	}

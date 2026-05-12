@@ -3,46 +3,27 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
-func PrintHeader() {
-	fmt.Printf("%-9s %-16s %-29s %7s %7s\n",
-		"PID", "USER", "NAME", "CPU%", "MEM%")
-	fmt.Printf("%-9s %-16s %-29s %7s %7s\n",
-		"---------", "----------------", "-----------------------------", "-------", "-------")
-}
-
-func PrintProcess(p Process) {
-	name := p.Name
-	if len(name) > 29 {
-		name = name[:26] + "..."
-	}
-
-	fmt.Printf("%-9d %-16s %-29s %7.1f %7.1f\n",
-		p.PID, p.User, name, p.CPU, p.Memory)
-}
-
-func PrintAll(processes []Process) {
-	PrintHeader()
-	for _, p := range processes {
-		PrintProcess(p)
-	}
-}
-
-// TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
 func main() {
 	filterCPU := flag.Float64("filter-cpu", 0.0, "Show processes above this CPU%")
 	filterMem := flag.Float64("filter-mem", 0.0, "Show processes above this MEM%")
 	killTarget := flag.String("kill", "", "kill process by name or PID")
-	interval := flag.Int("interval", 0, "auto-refresh every N seconds (0 = run once")
+	interval := flag.Int("interval", 0, "auto-refresh every N seconds (0 = run once)")
 
 	flag.Parse()
 
-	processes, err := FetchProcess()
-
 	if *killTarget != "" {
-		err := KillTarget(*killTarget, processes)
+		processes, err := FetchProcess()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		err = KillTarget(*killTarget, processes)
 		if err != nil {
 			fmt.Println("Kill failed:", err)
 		} else {
@@ -50,13 +31,45 @@ func main() {
 		}
 		return
 	}
-	_ = interval // not wired up yet
 
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
+	if *interval > 0 {
+		ticker := time.NewTicker(time.Duration(*interval) * time.Second)
+		defer ticker.Stop()
+
+		done := make(chan struct{})
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			<-sigs
+			close(done)
+		}()
+
+		for {
+			select {
+			case <-ticker.C:
+				processes, err := FetchProcess()
+				if err != nil {
+					fmt.Println("Error:", err)
+					return
+				}
+				filtered := FilterProcesses(processes, *filterCPU, *filterMem)
+				fmt.Print("\033[H\033[2J")
+				PrintAll(filtered)
+
+			case <-done:
+				fmt.Println("\nStopped.")
+				return
+			}
+		}
+	} else {
+		processes, err := FetchProcess()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		filtered := FilterProcesses(processes, *filterCPU, *filterMem)
+		PrintAll(filtered)
 	}
-
-	filtered := FilterProcesses(processes, *filterCPU, *filterMem)
-	PrintAll(filtered)
 }
